@@ -13,9 +13,18 @@ if uploaded_file is not None:
     # Read the uploaded CSV
     sales_data = pd.read_csv(uploaded_file)
 
-    # Display some basic statistics about the sales data
+    # Sales Data Overview
     st.subheader('Sales Data Overview')
-    st.write(sales_data.head())
+    num_top_products = st.slider("Select how many top products to display", 5, 20, 10)
+    top_products_by = st.selectbox("View top products by", ["Total Sales", "Quantity Sold"])
+    
+    if top_products_by == "Total Sales":
+        top_products = sales_data.groupby('product_title')['total_sales'].sum().nlargest(num_top_products)
+    else:
+        top_products = sales_data.groupby('product_title')['net_quantity'].sum().nlargest(num_top_products)
+    
+    st.write(f"Top {num_top_products} products by {top_products_by}:")
+    st.write(top_products)
 
     # Show overall metrics
     st.subheader('Overall Sales Metrics')
@@ -45,17 +54,38 @@ if uploaded_file is not None:
     st.write(filtered_data)
 
     # Plot: Sales by Product Title
-st.subheader('Total Sales by Product Title')
-product_sales = filtered_data.groupby('product_title')['total_sales'].sum().sort_values(ascending=False)
+    st.subheader('Total Sales by Product Title')
+    product_sales = filtered_data.groupby('product_title')['total_sales'].sum().sort_values(ascending=False)
 
-# Check if there's any data to plot
-if not product_sales.empty:
-    fig, ax = plt.subplots(figsize=(10, 6))
-    product_sales.plot(kind='bar', ax=ax)
-    ax.set_title('Total Sales by Product Title')
-    ax.set_ylabel('Sales ($)')
-    ax.set_xlabel('Product Title')
-    plt.xticks(rotation=45, ha='right')
-    st.pyplot(fig)
+    # Check if there's any data to plot
+    if not product_sales.empty:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        product_sales.plot(kind='bar', ax=ax)
+        ax.set_title('Total Sales by Product Title')
+        ax.set_ylabel('Sales ($)')
+        ax.set_xlabel('Product Title')
+        plt.xticks(rotation=45, ha='right')
+        st.pyplot(fig)
+    else:
+        st.write("No sales data available for the selected filters.")
+
+    # Sales Trends Over Time for a Selected Product
+    st.subheader('View Sales Trends Over Time')
+    selected_product = st.selectbox("Select a product to view its sales trend", options=sales_data['product_title'].unique())
+    
+    # Filter data by selected product and group by day
+    product_trend_data = sales_data[sales_data['product_title'] == selected_product].groupby('day')['net_quantity'].sum()
+
+    # Check if there's any data to plot
+    if not product_trend_data.empty:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        product_trend_data.plot(kind='line', ax=ax)
+        ax.set_title(f'Sales Trend Over Time for {selected_product}')
+        ax.set_ylabel('Quantity Sold')
+        ax.set_xlabel('Day')
+        plt.xticks(rotation=45, ha='right')
+        st.pyplot(fig)
+    else:
+        st.write(f"No sales data available for {selected_product} over time.")
 else:
-    st.write("No sales data available for the selected filters.")
+    st.write("Please upload a sales data file to proceed.")
