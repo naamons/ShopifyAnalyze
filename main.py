@@ -59,5 +59,3 @@ if not product_sales.empty:
     st.pyplot(fig)
 else:
     st.write("No sales data available for the selected filters.")
-else:
-    st.write("Please upload a sales data file to proceed.")
