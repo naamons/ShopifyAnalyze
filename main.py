@@ -13,9 +13,22 @@ if uploaded_file is not None:
     # Read the uploaded CSV
     sales_data = pd.read_csv(uploaded_file)
 
-    # Convert 'day' to a datetime type and extract month for grouping
-    sales_data['day'] = pd.to_datetime(sales_data['day'])
-    sales_data['month'] = sales_data['day'].dt.to_period('M')
+  # Convert 'day' to a datetime type and extract month for grouping
+sales_data['day'] = pd.to_datetime(sales_data['day'])
+sales_data['month'] = sales_data['day'].dt.to_period('M').astype(str)  # Convert to string
+
+# Show monthly sales metrics
+st.subheader('Monthly Sales Metrics')
+monthly_sales = sales_data.groupby('month')['total_sales'].sum().reset_index()
+fig_monthly_sales = px.bar(
+    monthly_sales, 
+    x='month', 
+    y='total_sales', 
+    title='Monthly Sales', 
+    labels={'month': 'Month', 'total_sales': 'Total Sales ($)'}, 
+    template="plotly_white"
+)
+st.plotly_chart(fig_monthly_sales)
 
     # Sales Data Overview
     st.subheader('Sales Data Overview')
