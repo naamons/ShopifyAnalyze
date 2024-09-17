@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
 
 # Set up the title and description
-st.title('Sales Forecasting and Reporting Dashboard')
-st.write('Upload your sales data to analyze trends and forecast stock.')
+st.title('Interactive Sales Forecasting and Reporting Dashboard')
+st.write('Upload your sales data to analyze trends and forecast stock with interactive charts.')
 
 # Allow the user to upload a CSV file
 uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
@@ -19,12 +19,22 @@ if uploaded_file is not None:
     top_products_by = st.selectbox("View top products by", ["Total Sales", "Quantity Sold"])
     
     if top_products_by == "Total Sales":
-        top_products = sales_data.groupby('product_title')['total_sales'].sum().nlargest(num_top_products)
+        top_products = sales_data.groupby('product_title')['total_sales'].sum().nlargest(num_top_products).reset_index()
     else:
-        top_products = sales_data.groupby('product_title')['net_quantity'].sum().nlargest(num_top_products)
+        top_products = sales_data.groupby('product_title')['net_quantity'].sum().nlargest(num_top_products).reset_index()
     
     st.write(f"Top {num_top_products} products by {top_products_by}:")
-    st.write(top_products)
+    
+    # Plot interactive bar chart using Plotly
+    fig_top_products = px.bar(
+        top_products,
+        x='product_title',
+        y='total_sales' if top_products_by == "Total Sales" else 'net_quantity',
+        title=f"Top {num_top_products} Products by {top_products_by}",
+        labels={'product_title': 'Product', 'total_sales': 'Total Sales ($)', 'net_quantity': 'Quantity Sold'},
+        template="plotly_white"
+    )
+    st.plotly_chart(fig_top_products)
 
     # Show overall metrics
     st.subheader('Overall Sales Metrics')
@@ -55,17 +65,19 @@ if uploaded_file is not None:
 
     # Plot: Sales by Product Title
     st.subheader('Total Sales by Product Title')
-    product_sales = filtered_data.groupby('product_title')['total_sales'].sum().sort_values(ascending=False)
+    product_sales = filtered_data.groupby('product_title')['total_sales'].sum().sort_values(ascending=False).reset_index()
 
     # Check if there's any data to plot
     if not product_sales.empty:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        product_sales.plot(kind='bar', ax=ax)
-        ax.set_title('Total Sales by Product Title')
-        ax.set_ylabel('Sales ($)')
-        ax.set_xlabel('Product Title')
-        plt.xticks(rotation=45, ha='right')
-        st.pyplot(fig)
+        fig_product_sales = px.bar(
+            product_sales,
+            x='product_title',
+            y='total_sales',
+            title='Total Sales by Product Title',
+            labels={'product_title': 'Product', 'total_sales': 'Total Sales ($)'},
+            template="plotly_white"
+        )
+        st.plotly_chart(fig_product_sales)
     else:
         st.write("No sales data available for the selected filters.")
 
@@ -74,17 +86,19 @@ if uploaded_file is not None:
     selected_product = st.selectbox("Select a product to view its sales trend", options=sales_data['product_title'].unique())
     
     # Filter data by selected product and group by day
-    product_trend_data = sales_data[sales_data['product_title'] == selected_product].groupby('day')['net_quantity'].sum()
+    product_trend_data = sales_data[sales_data['product_title'] == selected_product].groupby('day')['net_quantity'].sum().reset_index()
 
     # Check if there's any data to plot
     if not product_trend_data.empty:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        product_trend_data.plot(kind='line', ax=ax)
-        ax.set_title(f'Sales Trend Over Time for {selected_product}')
-        ax.set_ylabel('Quantity Sold')
-        ax.set_xlabel('Day')
-        plt.xticks(rotation=45, ha='right')
-        st.pyplot(fig)
+        fig_sales_trend = px.line(
+            product_trend_data,
+            x='day',
+            y='net_quantity',
+            title=f'Sales Trend Over Time for {selected_product}',
+            labels={'day': 'Day', 'net_quantity': 'Quantity Sold'},
+            template="plotly_white"
+        )
+        st.plotly_chart(fig_sales_trend)
     else:
         st.write(f"No sales data available for {selected_product} over time.")
 else:
