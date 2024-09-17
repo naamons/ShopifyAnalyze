@@ -129,15 +129,19 @@ if uploaded_file is not None:
         lambda row: 'Understocked' if row['Predicted Monthly Demand'] > row['Stocking Plan (units)'] else 'Well-stocked', axis=1
     )
     
-    # Color the rows based on the status
-    def highlight_critical(s):
-        if s == 'Understocked':
-            return 'background-color: red'
-        elif s == 'Well-stocked':
-            return 'background-color: green'
-        return ''
+    # Define the color map for the "Status" column
+color_map = {
+    'Understocked': 'background-color: red',
+    'Well-stocked': 'background-color: green'
+}
 
-    st.write(mps_data.style.applymap(highlight_critical, subset=['Status']))
+# Apply the color mapping to the 'Status' column
+styled_mps = mps_data.style.map({
+    'Status': mps_data['Status'].map(color_map)
+})
+
+st.write(styled_mps)
+
 
 else:
     st.write("Please upload a sales data file to proceed.")
