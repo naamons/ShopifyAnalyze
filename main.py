@@ -34,12 +34,12 @@ if uploaded_file is not None:
     st.subheader('Sales Data Overview')
     num_top_products = st.slider("Select how many top products to display", 5, 20, 10)
     top_products_by = st.selectbox("View top products by", ["Total Sales", "Quantity Sold"])
-    
+
     if top_products_by == "Total Sales":
         top_products = sales_data.groupby('product_title')['total_sales'].sum().nlargest(num_top_products).reset_index()
     else:
         top_products = sales_data.groupby('product_title')['net_quantity'].sum().nlargest(num_top_products).reset_index()
-    
+
     st.write(f"Top {num_top_products} products by {top_products_by}:")
     
     # Plot interactive bar chart using Plotly
@@ -92,7 +92,7 @@ if uploaded_file is not None:
     # Sales Trends Over Time for a Selected Product
     st.subheader('View Sales Trends Over Time')
     selected_product = st.selectbox("Select a product to view its sales trend", options=sales_data['product_title'].unique())
-    
+
     # Filter data by selected product and group by day
     product_trend_data = sales_data[sales_data['product_title'] == selected_product].groupby('day')['net_quantity'].sum().reset_index()
 
@@ -118,30 +118,31 @@ if uploaded_file is not None:
     sales_velocity = sales_data.groupby('product_title')['net_quantity'].sum() / 90  # Assuming 90 days in the dataset
     mps_data = pd.DataFrame(sales_velocity, columns=['Sales Velocity (units/day)']).reset_index()
 
-    # Allow the user to input stocking plans
+    # Allow the user to input stocking plans for each product (loop)
     mps_data['Stocking Plan (units)'] = st.number_input('Enter Stocking Plan for Products', value=100, step=10, format="%d")
     
     # Monthly demand prediction
     mps_data['Predicted Monthly Demand'] = mps_data['Sales Velocity (units/day)'] * 30  # Predicted for the next month
 
-    # Highlight critical items: overstocked (green), understocked (red)
+    # Status calculation: overstocked (green), understocked (red)
     mps_data['Status'] = mps_data.apply(
         lambda row: 'Understocked' if row['Predicted Monthly Demand'] > row['Stocking Plan (units)'] else 'Well-stocked', axis=1
     )
-    
-    # Define the color map for the "Status" column
-color_map = {
-    'Understocked': 'background-color: red',
-    'Well-stocked': 'background-color: green'
-}
 
-# Apply the color mapping to the 'Status' column
-styled_mps = mps_data.style.map({
-    'Status': mps_data['Status'].map(color_map)
-})
+    # Define custom color mapping for the 'Status' column
+    def color_map(val):
+        if val == 'Understocked':
+            return 'background-color: red'
+        elif val == 'Well-stocked':
+            return 'background-color: green'
+        else:
+            return ''
 
-st.write(styled_mps)
+    # Apply color mapping to the 'Status' column
+    styled_mps = mps_data.style.applymap(color_map, subset=['Status'])
 
+    # Display the styled MPS data
+    st.dataframe(styled_mps)
 
 else:
     st.write("Please upload a sales data file to proceed.")
