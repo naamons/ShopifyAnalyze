@@ -45,9 +45,11 @@ if uploaded_file is not None:
     st.write(filtered_data)
 
     # Plot: Sales by Product Title
-    st.subheader('Total Sales by Product Title')
-    product_sales = filtered_data.groupby('product_title')['total_sales'].sum().sort_values(ascending=False)
+st.subheader('Total Sales by Product Title')
+product_sales = filtered_data.groupby('product_title')['total_sales'].sum().sort_values(ascending=False)
 
+# Check if there's any data to plot
+if not product_sales.empty:
     fig, ax = plt.subplots(figsize=(10, 6))
     product_sales.plot(kind='bar', ax=ax)
     ax.set_title('Total Sales by Product Title')
@@ -55,14 +57,8 @@ if uploaded_file is not None:
     ax.set_xlabel('Product Title')
     plt.xticks(rotation=45, ha='right')
     st.pyplot(fig)
-
-    # Additional Analysis: Suggest Stock and Sales Strategies
-    st.subheader('Stock and Sales Strategies')
-    stock_advice = filtered_data[['product_title', 'net_quantity']].copy()
-    stock_advice['Average_Daily_Sales'] = stock_advice['net_quantity'] / 90  # Assuming 90 days of data
-    stock_advice = stock_advice.sort_values(by='Average_Daily_Sales', ascending=False)
-    st.write("Products sorted by average daily sales (higher values suggest keeping more stock):")
-    st.write(stock_advice[['product_title', 'Average_Daily_Sales']])
+else:
+    st.write("No sales data available for the selected filters.")
 
 else:
     st.write("Please upload a sales data file to proceed.")
