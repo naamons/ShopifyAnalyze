@@ -13,6 +13,10 @@ if uploaded_file is not None:
     # Read the uploaded CSV
     sales_data = pd.read_csv(uploaded_file)
 
+    # Convert 'day' to a datetime type and extract month for grouping
+    sales_data['day'] = pd.to_datetime(sales_data['day'])
+    sales_data['month'] = sales_data['day'].dt.to_period('M')
+
     # Sales Data Overview
     st.subheader('Sales Data Overview')
     num_top_products = st.slider("Select how many top products to display", 5, 20, 10)
@@ -36,29 +40,26 @@ if uploaded_file is not None:
     )
     st.plotly_chart(fig_top_products)
 
-    # Show overall metrics
-    st.subheader('Overall Sales Metrics')
-    total_sales = sales_data['total_sales'].sum()
-    total_quantity = sales_data['net_quantity'].sum()
-    top_product = sales_data.loc[sales_data['net_quantity'].idxmax(), 'product_title']
+    # Show monthly sales metrics
+    st.subheader('Monthly Sales Metrics')
+    monthly_sales = sales_data.groupby('month')['total_sales'].sum().reset_index()
+    fig_monthly_sales = px.bar(monthly_sales, x='month', y='total_sales', title='Monthly Sales', labels={'month': 'Month', 'total_sales': 'Total Sales ($)'}, template="plotly_white")
+    st.plotly_chart(fig_monthly_sales)
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric(label="Total Sales", value=f"${total_sales:,.2f}")
-    col2.metric(label="Total Quantity Sold", value=f"{total_quantity}")
-    col3.metric(label="Top Selling Product", value=top_product)
-
-    # Filter options by product type and vendor
+    # Filter options by product type and vendor with "Any" option
     st.subheader('Filter by Product Type and Vendor')
-    product_types = sales_data['product_type'].unique()
-    vendors = sales_data['product_vendor'].unique()
+    product_types = ["Any"] + list(sales_data['product_type'].unique())
+    vendors = ["Any"] + list(sales_data['product_vendor'].unique())
 
     selected_product_type = st.selectbox("Select Product Type", options=product_types)
     selected_vendor = st.selectbox("Select Vendor", options=vendors)
 
-    filtered_data = sales_data[
-        (sales_data['product_type'] == selected_product_type) & 
-        (sales_data['product_vendor'] == selected_vendor)
-    ]
+    # Filter data based on the selections
+    filtered_data = sales_data.copy()
+    if selected_product_type != "Any":
+        filtered_data = filtered_data[filtered_data['product_type'] == selected_product_type]
+    if selected_vendor != "Any":
+        filtered_data = filtered_data[filtered_data['product_vendor'] == selected_vendor]
 
     st.write(f"Showing data for product type: **{selected_product_type}** and vendor: **{selected_vendor}**")
     st.write(filtered_data)
@@ -101,5 +102,35 @@ if uploaded_file is not None:
         st.plotly_chart(fig_sales_trend)
     else:
         st.write(f"No sales data available for {selected_product} over time.")
+
+    # Stocking Requirements: Master Planning Schedule (MPS)
+    st.subheader('Stocking Requirements (Master Planning Schedule)')
+    st.write("This section suggests stocking requirements based on sales velocity and expected demand.")
+
+    # Calculate average daily sales (sales velocity) for each product
+    sales_velocity = sales_data.groupby('product_title')['net_quantity'].sum() / 90  # Assuming 90 days in the dataset
+    mps_data = pd.DataFrame(sales_velocity, columns=['Sales Velocity (units/day)']).reset_index()
+
+    # Allow the user to input stocking plans
+    mps_data['Stocking Plan (units)'] = st.number_input('Enter Stocking Plan for Products', value=100, step=10, format="%d")
+    
+    # Monthly demand prediction
+    mps_data['Predicted Monthly Demand'] = mps_data['Sales Velocity (units/day)'] * 30  # Predicted for the next month
+
+    # Highlight critical items: overstocked (green), understocked (red)
+    mps_data['Status'] = mps_data.apply(
+        lambda row: 'Understocked' if row['Predicted Monthly Demand'] > row['Stocking Plan (units)'] else 'Well-stocked', axis=1
+    )
+    
+    # Color the rows based on the status
+    def highlight_critical(s):
+        if s == 'Understocked':
+            return 'background-color: red'
+        elif s == 'Well-stocked':
+            return 'background-color: green'
+        return ''
+
+    st.write(mps_data.style.applymap(highlight_critical, subset=['Status']))
+
 else:
     st.write("Please upload a sales data file to proceed.")
